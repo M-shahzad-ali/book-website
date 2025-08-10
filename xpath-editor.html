@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XPath Editor</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --muted: #94a3b8;
+      --text: #e5e7eb;
+      --accent: #22d3ee;
+      --danger: #ef4444;
+      --ok: #22c55e;
+      --border: #1f2937;
+      --code: #0b1020;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 16px;
+      height: 100%;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .panel h2 {
+      margin: 0;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    .section {
+      padding: 12px 14px;
+      gap: 10px;
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    label { font-size: 12px; color: var(--muted); }
+
+    textarea, input, select {
+      background: var(--code);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      outline: none;
+      width: 100%;
+    }
+
+    textarea { height: 280px; resize: vertical; }
+
+    .row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: end; }
+
+    button {
+      background: linear-gradient(180deg, #22d3ee, #06b6d4);
+      color: #02111a;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .muted { color: var(--muted); }
+    .danger { color: var(--danger); }
+    .ok { color: var(--ok); }
+
+    .results {
+      padding: 0 14px 14px 14px;
+      overflow: auto;
+      flex: 1;
+    }
+
+    .result {
+      background: #0b1226;
+      border: 1px solid #0e1a36;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .header-row { display: flex; gap: 12px; align-items: center; }
+
+    code.inline {
+      background: #0b1020;
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .footer {
+      padding: 8px 14px 14px 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel" style="min-height: 0;">
+      <h2>Input</h2>
+      <div class="section">
+        <div>
+          <label for="doc">Document (HTML or XML)</label>
+          <textarea id="doc" spellcheck="false"><!DOCTYPE html>
+<html>
+  <head>
+    <title>Sample</title>
+  </head>
+  <body>
+    <h1 id="title">Hello World</h1>
+    <div class="card" data-id="1">
+      <a href="/alpha">Alpha</a>
+      <span class="value">42</span>
+    </div>
+    <div class="card" data-id="2">
+      <a href="/beta">Beta</a>
+      <span class="value">84</span>
+    </div>
+  </body>
+</html></textarea>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="xpath">XPath</label>
+            <input id="xpath" value="//div[@class='card']/a/text()" />
+          </div>
+          <div>
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="html" selected>HTML</option>
+              <option value="xml">XML</option>
+            </select>
+          </div>
+          <div>
+            <button id="run">Evaluate</button>
+          </div>
+        </div>
+        <div class="header-row">
+          <span class="muted">Use <code class="inline">//</code>, predicates, axes, functions, etc. Examples: <code class="inline">//*[@id='title']</code>, <code class="inline">//div[contains(@class,'card')][@data-id='2']//a</code></span>
+          <span class="badge" id="count">0 results</span>
+        </div>
+      </div>
+      <div class="results" id="results"></div>
+      <div class="footer">
+        Tip: In Leapwork, paste your XPath into a Web building block's selector editor and click Validate to test against the live page.
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Output</h2>
+      <div class="section" style="gap: 6px;">
+        <div class="header-row">
+          <span class="muted">Evaluation details</span>
+        </div>
+        <div id="details" class="result" style="display:none;"></div>
+        <div id="error" class="result danger" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const docEl = document.getElementById('doc');
+    const xpathEl = document.getElementById('xpath');
+    const modeEl = document.getElementById('mode');
+    const runBtn = document.getElementById('run');
+    const resultsEl = document.getElementById('results');
+    const detailsEl = document.getElementById('details');
+    const errorEl = document.getElementById('error');
+    const countEl = document.getElementById('count');
+
+    function clearOutputs() {
+      resultsEl.innerHTML = '';
+      detailsEl.style.display = 'none';
+      errorEl.style.display = 'none';
+      countEl.textContent = '0 results';
+    }
+
+    function serializeNode(node, isXml) {
+      if (!node) return '';
+      const nodeType = node.nodeType;
+      try {
+        if (nodeType === Node.ELEMENT_NODE) {
+          if (isXml) return new XMLSerializer().serializeToString(node);
+          return node.outerHTML ?? new XMLSerializer().serializeToString(node);
+        }
+        if (nodeType === Node.ATTRIBUTE_NODE) {
+          return `${node.name}="${node.value}"`;
+        }
+        if (nodeType === Node.TEXT_NODE) {
+          return node.textContent ?? '';
+        }
+        return new XMLSerializer().serializeToString(node);
+      } catch (e) {
+        return String(e);
+      }
+    }
+
+    function hasXmlParseError(doc) {
+      const errors = doc.getElementsByTagName('parsererror');
+      return errors && errors.length > 0;
+    }
+
+    function evaluateXPath(content, xpath, mode) {
+      const isXml = mode === 'xml';
+      const parser = new DOMParser();
+      const mime = isXml ? 'application/xml' : 'text/html';
+      const parsed = parser.parseFromString(content, mime);
+
+      if (isXml && hasXmlParseError(parsed)) {
+        const err = parsed.getElementsByTagName('parsererror')[0];
+        const message = err ? err.textContent : 'XML parser error';
+        throw new Error(message);
+      }
+
+      // namespace resolver (extend as needed)
+      const nsResolver = parsed.createNSResolver(parsed.documentElement);
+
+      const start = performance.now();
+      const result = parsed.evaluate(xpath, parsed, nsResolver, XPathResult.ANY_TYPE, null);
+      const end = performance.now();
+
+      const timingMs = (end - start).toFixed(2);
+
+      const output = { timingMs, resultType: result.resultType, values: [] };
+
+      switch (result.resultType) {
+        case XPathResult.STRING_TYPE:
+          output.values.push(result.stringValue);
+          break;
+        case XPathResult.NUMBER_TYPE:
+          output.values.push(String(result.numberValue));
+          break;
+        case XPathResult.BOOLEAN_TYPE:
+          output.values.push(String(result.booleanValue));
+          break;
+        case XPathResult.UNORDERED_NODE_ITERATOR_TYPE:
+        case XPathResult.ORDERED_NODE_ITERATOR_TYPE: {
+          let node;
+          while ((node = result.iterateNext())) {
+            output.values.push(node);
+          }
+          break;
+        }
+        case XPathResult.FIRST_ORDERED_NODE_TYPE:
+        case XPathResult.ANY_UNORDERED_NODE_TYPE: {
+          if (result.singleNodeValue) output.values.push(result.singleNodeValue);
+          break;
+        }
+        default: {
+          // Fallback: attempt to iterate
+          try {
+            let node;
+            while ((node = result.iterateNext())) {
+              output.values.push(node);
+            }
+          } catch (_) {}
+        }
+      }
+
+      return { doc: parsed, isXml, output };
+    }
+
+    function renderResults(data) {
+      const { isXml, output } = data;
+      const values = output.values;
+      countEl.textContent = `${values.length} result${values.length === 1 ? '' : 's'}`;
+
+      if (values.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'result';
+        empty.innerHTML = '<span class="muted">No matches.</span>';
+        resultsEl.appendChild(empty);
+      } else {
+        values.forEach((val, idx) => {
+          const div = document.createElement('div');
+          div.className = 'result';
+          if (typeof val === 'string') {
+            div.textContent = val;
+          } else if (val && (val.nodeType === Node.TEXT_NODE)) {
+            div.textContent = val.textContent ?? '';
+          } else {
+            div.textContent = serializeNode(val, isXml);
+          }
+          resultsEl.appendChild(div);
+        });
+      }
+
+      detailsEl.style.display = 'block';
+      detailsEl.textContent = `Result type: ${output.resultType}  •  Time: ${output.timingMs} ms`;
+    }
+
+    function run() {
+      clearOutputs();
+      const content = docEl.value;
+      const xpath = xpathEl.value.trim();
+      const mode = modeEl.value;
+
+      if (!xpath) {
+        errorEl.style.display = 'block';
+        errorEl.textContent = 'Please enter an XPath expression.';
+        return;
+      }
+
+      try {
+        const data = evaluateXPath(content, xpath, mode);
+        renderResults(data);
+      } catch (e) {
+        errorEl.style.display = 'block';
+        errorEl.textContent = String(e && e.message ? e.message : e);
+      }
+    }
+
+    runBtn.addEventListener('click', run);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'enter') {
+        run();
+      }
+    });
+  </script>
+</body>
+</html>
